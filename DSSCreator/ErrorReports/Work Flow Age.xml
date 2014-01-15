@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views name="Work Flow Age">
+  <view id="0" defaultSort="WFClaims DESC" showChart="bar,stacked,pie,line">
+    <title>Work Flow Age</title>
+    <sql>
+      SELECT Q.WF_QUEUE_ID, Q.WF_QUEUE_NAME AS QUEUE,
+      COUNT(DISTINCT C.WF_CLAIM_ID) AS WFClaims, SUM(EC.CLAIMCHARGE) AS CHARGES,
+      SUM(EC.ClaimDeniedAmount + EC.ClaimNonCoveredCharges) AS DeniedAmount
+      FROM WF_CLAIM C
+      LEFT JOIN WF_QUEUE Q   ON (C.WF_QUEUE_ID = Q.WF_QUEUE_ID)
+      LEFT JOIN WF_STATE S   ON (C.WF_STATE_ID = S.WF_STATE_ID AND C.SITE_ID=S.SITE_ID)
+      LEFT JOIN ERA_CLAIM EC ON (C.ERA_CLAIM_ID=EC.ERA_CLAIM_ID AND C.WF_CLAIM_ID=EC.WF_CLAIM_ID)
+      WHERE (C.SITE_ID=RptVarSiteID)
+      AND (EC.RemitDate &gt;= [FromDate]) AND (EC.RemitDate &lt;= [ToDate])
+      AND (S.INITIAL_STATUS LIKE '[WFStatus]')
+      GROUP BY Q.WF_QUEUE_NAME, Q.WF_QUEUE_ID
+   </sql>
+    <xAxisLabel>Queue</xAxisLabel>
+    <yAxisLabel>Amount</yAxisLabel>
+	<y2AxisLabel>Claims</y2AxisLabel>
+    <parameters>
+      <parameter>
+        <name>Remit Start Date</name>
+        <required>true</required>
+        <columnName>FromDate</columnName>
+        <operator>&gt;=</operator>
+        <type>Date</type>
+        <defaultValue>STARTOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Remit To Date</name>
+        <required>true</required>
+        <columnName>ToDate</columnName>
+        <operator>&lt;=</operator>
+        <type>Date</type>
+        <defaultValue>ENDOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Workflow Status</name>
+        <required>true</required>
+        <columnName>WFStatus</columnName>
+        <operator>=</operator>
+        <type>StaticList</type>
+        <defaultValue>%=All,A=Active,P=Pending,R=Reminder,C=Completed</defaultValue>
+      </parameter>
+    </parameters>
+    <fields>
+      <field>
+        <name>QUEUE</name>
+        <formatting/>
+        <label>QUEUE</label>
+        <sortOrder/>
+        <valueField>false</valueField>
+        <displayName>QUEUE</displayName>
+        <visible>true</visible>
+      </field>
+		<field>
+			<name>CHARGES</name>
+			<formatting>#,##0.00</formatting>
+			<label>Charges</label>
+			<sortOrder>DESC</sortOrder>
+			<valueField>true</valueField>
+			<displayName>Charges</displayName>
+			<visible>true</visible>
+		</field>
+		<field>
+			<name>DeniedAmount</name>
+			<formatting>#,##0.00</formatting>
+			<label>Denied and NC Amount</label>
+			<sortOrder>DESC</sortOrder>
+			<valueField>true</valueField>
+			<displayName>Denied and NC Amount</displayName>
+			<visible>true</visible>
+		</field>
+		<field>
+			<name>WFClaims</name>
+			<formatting>#,##0</formatting>
+			<label>WFClaims</label>
+			<axisY2>true</axisY2>
+			<sortOrder>DESC</sortOrder>
+			<valueField>true</valueField>
+			<displayName>Claims</displayName>
+			<visible>true</visible>
+		</field>
+      <field>
+        <name>WF_QUEUE_ID</name>
+        <formatting/>
+        <label>WF_QUEUE_ID</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>WF_QUEUE_ID</displayName>
+        <visible>false</visible>
+      </field>
+    </fields>
+    <relationship>
+      <fieldName>WF_QUEUE_ID</fieldName>
+      <viewId>1</viewId>
+    </relationship>
+  </view>
+  <view id="1" defaultSort="SinceRemit ASC" showChart="bar,pie,line">
+    <title>Work Flow Queue Since Remit Date</title>
+    <sql>
+      SELECT COUNT(*) AS WFClaims,
+      (ABS(DATEDIFF(dd, GETDATE(), EC.RemitDate))) AS SinceRemit, SUM(EC.CLAIMCHARGE) AS CHARGES,
+      SUM(EC.ClaimDeniedAmount + EC.ClaimNonCoveredCharges) AS DeniedAmount
+      FROM WF_CLAIM C
+      LEFT JOIN WF_QUEUE Q   ON (C.WF_QUEUE_ID = Q.WF_QUEUE_ID)
+      LEFT JOIN WF_STATE S   ON (C.WF_STATE_ID = S.WF_STATE_ID AND C.SITE_ID=S.SITE_ID)
+      LEFT JOIN ERA_CLAIM EC ON (C.ERA_CLAIM_ID=EC.ERA_CLAIM_ID AND C.WF_CLAIM_ID=EC.WF_CLAIM_ID)
+      WHERE (C.SITE_ID=RptVarSiteID)
+      AND (EC.RemitDate &gt;= [FromDate]) AND (EC.RemitDate &lt;= [ToDate])
+      AND (S.INITIAL_STATUS LIKE '[WFStatus]')
+      AND (Q.WF_QUEUE_ID [WF_QUEUE])
+      Group By (ABS(DATEDIFF(dd, GETDATE(), EC.RemitDate)))
+    </sql>
+    <xAxisLabel>Days Since Remit</xAxisLabel>
+	  <yAxisLabel>Amount</yAxisLabel>
+	  <y2AxisLabel>Claims</y2AxisLabel>
+    <parameters>
+      <parameter>
+        <name>Remit Start Date</name>
+        <required>true</required>
+        <columnName>FromDate</columnName>
+        <operator>&gt;=</operator>
+        <type>Date</type>
+        <defaultValue>STARTOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Remit To Date</name>
+        <required>true</required>
+        <columnName>ToDate</columnName>
+        <operator>&lt;=</operator>
+        <type>Date</type>
+        <defaultValue>ENDOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Workflow Status</name>
+        <required>true</required>
+        <columnName>WFStatus</columnName>
+        <operator>=</operator>
+        <type>StaticList</type>
+        <defaultValue>%=All,A=Active,P=Pending,R=Reminder,C=Completed</defaultValue>
+      </parameter>
+      <parameter>
+        <name>QUEUE</name>
+        <required>true</required>
+        <columnName>WF_QUEUE</columnName>
+        <operator>=</operator>
+        <type>DYNAMICMULTILIST</type>
+        <defaultValue/>
+      </parameter>
+    </parameters>
+    <fields>
+      <field>
+        <name>SinceRemit</name>
+        <formatting>#,##</formatting>
+        <label>Days Since Remit</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Days Since Remit</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>CHARGES</name>
+        <formatting>#,##0.00</formatting>
+        <label>Charges</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Charges</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>DeniedAmount</name>
+        <formatting>#,##0.00</formatting>
+        <label>Denied and NC Amount</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Denied and NC Amount</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>WFClaims</name>
+        <formatting>#,##0</formatting>
+        <label>WFClaims</label>
+        <axisY2>true</axisY2>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Claims</displayName>
+        <visible>true</visible>
+      </field>
+    </fields>
+    <relationship>
+      <fieldName>SinceRemit</fieldName>
+      <viewId>2</viewId>
+    </relationship>
+  </view>
+  <view id="2" showChart="false">
+    <title>Work Flow Queue by Days Back, Claims Listing</title>
+    <sql>
+      SELECT C.ERA_CLAIM_ID, C.PatientLastName, C.PatientFirstName, C.PatientControlNum,
+      C.PatientIdCode, C.RemitDate, C.ClaimToDate, C.ClaimTypeOfBill, C.ClaimStatus,
+      SUM(C.ClaimDeniedAmount + C.ClaimNonCoveredCharges) AS DeniedAmount,
+      WS.INITIAL_STATUS, WC.WF_STATE_ID, Q.WF_QUEUE_NAME AS QUEUE,
+      (ABS(DATEDIFF(dd, GETDATE(), WC.LAST_UPDATE_UDT))) AS LastUpdate,
+      (ABS(DATEDIFF(dd, GETDATE(), C.RemitDate))) AS SinceRemit
+      FROM WF_CLAIM WC
+      LEFT JOIN WF_QUEUE Q  ON (WC.WF_QUEUE_ID = Q.WF_QUEUE_ID)
+      LEFT JOIN WF_STATE WS ON (WC.WF_STATE_ID = WS.WF_STATE_ID AND WC.SITE_ID = WS.SITE_ID)
+      LEFT JOIN ERA_CLAIM C ON (WC.ERA_CLAIM_ID = C.ERA_CLAIM_ID AND WC.WF_CLAIM_ID = C.WF_CLAIM_ID)
+      WHERE (C.SITE_ID=RptVarSiteID)
+      AND (C.RemitDate &gt;= [FromDate]) AND (C.RemitDate &lt;= [ToDate])
+      AND (WS.INITIAL_STATUS LIKE '[WFStatus]')
+      AND (WC.WF_QUEUE_ID LIKE '[WF_QUEUE_ID]')
+      AND (ABS(DATEDIFF(dd, GETDATE(), C.RemitDate))&lt;=[SinceRemit])
+      GROUP BY  C.ERA_CLAIM_ID, C.PatientLastName, C.PatientFirstName, C.PatientControlNum,
+      C.PatientIdCode, C.RemitDate, C.ClaimToDate, C.ClaimTypeOfBill, C.ClaimStatus,
+      WS.INITIAL_STATUS, WC.WF_STATE_ID, Q.WF_QUEUE_NAME, (ABS(DATEDIFF(dd, GETDATE(), WC.LAST_UPDATE_UDT)))
+    </sql>
+    <parameters>
+      <parameter>
+        <name>Remit Start Date</name>
+        <required>true</required>
+        <columnName>FromDate</columnName>
+        <operator>&gt;=</operator>
+        <type>Date</type>
+        <defaultValue>STARTOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Remit To Date</name>
+        <required>true</required>
+        <columnName>ToDate</columnName>
+        <operator>&lt;=</operator>
+        <type>Date</type>
+        <defaultValue>ENDOFLASTMONTH</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Workflow Status</name>
+        <required>true</required>
+        <columnName>WFStatus</columnName>
+        <operator>=</operator>
+        <type>StaticList</type>
+        <defaultValue>%=All,A=Active,P=Pending,R=Reminder,C=Completed</defaultValue>
+      </parameter>
+      <parameter>
+        <name>QUEUE</name>
+        <required>true</required>
+        <columnName>WF_QUEUE_ID</columnName>
+        <operator>=</operator>
+        <type>DYNAMICLIST</type>
+        <defaultValue>WF_QUEUE</defaultValue>
+      </parameter>
+      <parameter>
+        <name>Days Since Remit</name>
+        <required>true</required>
+        <columnName>SinceRemit</columnName>
+        <operator>&lt;=</operator>
+        <type>List</type>
+        <defaultValue/>
+      </parameter>
+    </parameters>
+    <fields>
+      <field>
+        <name>PatientLastName</name>
+        <formatting/>
+        <label>Last Name</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Last Name</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>PatientFirstName</name>
+        <formatting/>
+        <label>First Name</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>First Name</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>PatientControlNum</name>
+        <formatting/>
+        <label>Pat Cntrl Num</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Pat Cntrl Num</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>PatientIdCode</name>
+        <formatting/>
+        <label>Pat Id Code</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Pat Id Code</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>RemitDate</name>
+        <formatting>MM/dd/yyyy</formatting>
+        <label>Remit Date</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>Remit Date</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>ClaimToDate</name>
+        <formatting>MM/dd/yyyy</formatting>
+        <label>End Date</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>End Date</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>ClaimTypeOfBill</name>
+        <formatting/>
+        <label>TOB</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>true</valueField>
+        <displayName>TOB</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>ClaimStatus</name>
+        <formatting/>
+        <label>Claim Status</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>Claim Status</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>DeniedAmount</name>
+        <formatting>#,##0.00</formatting>
+        <label>Denied and NC Amount</label>
+        <sortOrder>DESC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>Denied and NC Amount</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>INITIAL_STATUS</name>
+        <formatting/>
+        <label>WF Status</label>
+        <sortOrder/>
+        <valueField>false</valueField>
+        <displayName>WF Status</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>WF_STATE_ID</name>
+        <formatting/>
+        <label>WF State</label>
+        <sortOrder/>
+        <valueField>false</valueField>
+        <displayName>WF State</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>QUEUE</name>
+        <formatting/>
+        <label>QUEUE</label>
+        <sortOrder/>
+        <valueField>false</valueField>
+        <displayName>QUEUE</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>SinceRemit</name>
+        <formatting>#,##</formatting>
+        <calcTotals>false</calcTotals>
+        <label>Days Since Remit</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>Days Since Remit</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>LastUpdate</name>
+        <formatting>#,##</formatting>
+        <calcTotals>false</calcTotals>
+        <label>Days Since Update</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>Days Since Update</displayName>
+        <visible>true</visible>
+      </field>
+      <field>
+        <name>ERA_CLAIM_ID</name>
+        <formatting/>
+        <label>ERA_CLAIM_ID</label>
+        <sortOrder>ASC</sortOrder>
+        <valueField>false</valueField>
+        <displayName>ERA_CLAIM_ID</displayName>
+        <visible>false</visible>
+      </field>
+    </fields>
+    <relationship>
+      <fieldName/>
+      <viewId/>
+    </relationship>
+  </view>
+</views>
